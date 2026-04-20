@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set Theory Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent-a: #6ee7f7;
+    --accent-b: #f76eb2;
+    --accent-c: #a8f76e;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+    --glow-a: rgba(110,231,247,0.18);
+    --glow-b: rgba(247,110,178,0.18);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.85);
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--accent-a);
+    text-shadow: 0 0 24px var(--glow-a);
+  }
+
+  .logo span {
+    color: var(--accent-b);
+    text-shadow: 0 0 24px var(--glow-b);
+  }
+
+  .tagline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    height: calc(100vh - 65px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .set-input-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .set-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .set-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-a { background: var(--accent-a); box-shadow: 0 0 8px var(--accent-a); }
+  .dot-b { background: var(--accent-b); box-shadow: 0 0 8px var(--accent-b); }
+  .dot-c { background: var(--accent-c); box-shadow: 0 0 8px var(--accent-c); }
+
+  input[type="text"] {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.8rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent-a);
+    box-shadow: 0 0 0 3px rgba(110,231,247,0.08);
+  }
+
+  .input-hint {
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  /* Operation buttons */
+  .ops-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .op-btn {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.6rem 0.5rem;
+    transition: all 0.2s;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .op-btn:hover {
+    background: rgba(110,231,247,0.08);
+    border-color: var(--accent-a);
+    color: var(--accent-a);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(110,231,247,0.1);
+  }
+
+  .op-btn.active {
+    background: rgba(110,231,247,0.12);
+    border-color: var(--accent-a);
+    color: var(--accent-a);
+    box-shadow: 0 0 16px rgba(110,231,247,0.15);
+  }
+
+  .op-symbol {
+    font-size: 1.1rem;
+    font-family: 'Fraunces', serif;
+  }
+
+  .op-name {
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .op-btn.active .op-name,
+  .op-btn:hover .op-name {
+    color: inherit;
+  }
+
+  /* Result panel */
+  .result-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 80px;
+  }
+
+  .result-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .result-value {
+    font-size: 0.85rem;
+    color: var(--accent-a);
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  .result-formula {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+  }
+
+  /* Stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-card {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  .stat-lbl {
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.1rem;
+  }
+
+  /* Canvas area */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 50%, rgba(110,231,247,0.03) 0%, transparent 70%);
+  }
+
+  .canvas-area canvas {
+    display: block;
+  }
+
+  .canvas-info {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1.5rem;
+    background: rgba(10,10,15,0.8);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 0.6rem 1.5rem;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+  }
+
+  .info-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .info-chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Tooltip */
+  .tooltip {
+    position: absolute;
+    background: rgba(10,10,15,0.95);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.75rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 50;
+    max-width: 200px;
+  }
+
+  .tooltip.show { opacity: 1; }
+
+  /* Three-set toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    transition: background 0.3s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    left: 3px; top: 3px;
+    width: 14px; height: 14px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: transform 0.3s, background 0.3s;
+  }
+
+  .toggle input:checked + .toggle-slider { background: rgba(110,231,247,0.2); }
+  .toggle input:checked + .toggle-slider::before {
+    transform: translateX(16px);
+    background: var(--accent-a);
+    box-shadow: 0 0 8px var(--accent-a);
+  }
+
+  /* Members badge */
+  .members-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+
+  .member-tag {
+    background: rgba(110,231,247,0.08);
+    border: 1px solid rgba(110,231,247,0.2);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    color: var(--accent-a);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { animation: fadeIn 0.4s ease forwards; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Set<span>Theory</span> ∿ Visualizer</div>
+  </div>
+  <div class="tagline">Interactive Venn Diagram Explorer</div>
+</header>
+
+<main>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Define Your Sets</div>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="set-input-block">
+          <div class="set-label"><div class="set-dot dot-a"></div> Set A</div>
+          <input type="text" id="setA" value="1, 2, 3, 4, 5" placeholder="e.g. 1, 2, 3, a, b">
+          <div class="input-hint">Comma-separated values</div>
+        </div>
+        <div class="set-input-block">
+          <div class="set-label"><div class="set-dot dot-b"></div> Set B</div>
+          <input type="text" id="setB" value="3, 4, 5, 6, 7" placeholder="e.g. 3, 4, 5, x, y">
+        </div>
+        <div id="setCBlock" class="set-input-block" style="display:none;">
+          <div class="set-label"><div class="set-dot dot-c"></div> Set C</div>
+          <input type="text" id="setC" value="5, 6, 7, 8, 9" placeholder="e.g. 5, 6, 7, z">
+        </div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="threeSetToggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span>Enable three-set mode</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Operations</div>
+      <div class="ops-grid">
+        <button class="op-btn active" data-op="union" onclick="setOp('union',this)">
+          <span class="op-symbol">A ∪ B</span>
+          <span class="op-name">Union</span>
+        </button>
+        <button class="op-btn" data-op="intersection" onclick="setOp('intersection',this)">
+          <span class="op-symbol">A ∩ B</span>
+          <span class="op-name">Intersection</span>
+        </button>
+        <button class="op-btn" data-op="diff_ab" onclick="setOp('diff_ab',this)">
+          <span class="op-symbol">A \ B</span>
+          <span class="op-name">A minus B</span>
+        </button>
+        <button class="op-btn" data-op="diff_ba" onclick="setOp('diff_ba',this)">
+          <span class="op-symbol">B \ A</span>
+          <span class="op-name">B minus A</span>
+        </button>
+        <button class="op-btn" data-op="sym_diff" onclick="setOp('sym_diff',this)">
+          <span class="op-symbol">A △ B</span>
+          <span class="op-name">Sym. Diff.</span>
+        </button>
+        <button class="op-btn" data-op="complement" onclick="setOp('complement',this)">
+          <span class="op-symbol">A'</span>
+          <span class="op-name">Complement</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Result</div>
+      <div class="result-box animate-in" id="resultBox">
+        <div class="result-label" id="resultLabel">A ∪ B</div>
+        <div id="resultMembers" class="members-list"></div>
+        <div class="result-formula" id="resultFormula"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Statistics</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="statA" style="color:var(--accent-a)">0</div>
+          <div class="stat-lbl">|A|</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statB" style="color:var(--accent-b)">0</div>
+          <div class="stat-lbl">|B|</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statR" style="color:var(--text)">0</div>
+          <div class="stat-lbl">|Result|</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Canvas -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas id="vennCanvas"></canvas>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="canvas-info">
+      <div class="info-chip">
+        <div class="chip-dot" style="background:var(--accent-a);box-shadow:0 0 6px var(--accent-a)"></div>
+        <span id="chipA">Set A</span>
+      </div>
+      <div class="info-chip">
+        <div class="chip-dot" style="background:var(--accent-b);box-shadow:0 0 6px var(--accent-b)"></div>
+        <span id="chipB">Set B</span>
+      </div>
+      <div class="info-chip" id="chipCWrap" style="display:none;">
+        <div class="chip-dot" style="background:var(--accent-c);box-shadow:0 0 6px var(--accent-c)"></div>
+        <span id="chipC">Set C</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+let currentOp = 'union';
+let threeSet = false;
+
+const canvas = document.getElementById('vennCanvas');
+const ctx = canvas.getContext('2d');
+
+function parseSet(id) {
+  const raw = document.getElementById(id).value;
+  return [...new Set(raw.split(',').map(s => s.trim()).filter(s => s !== ''))];
+}
+
+function getUniversal(a, b, c) {
+  return [...new Set([...a, ...b, ...(c||[])])];
+}
+
+function union(a, b) { return [...new Set([...a, ...b])]; }
+function intersect(a, b) { return a.filter(x => b.includes(x)); }
+function diff(a, b) { return a.filter(x => !b.includes(x)); }
+function symDiff(a, b) { return [...diff(a,b), ...diff(b,a)]; }
+
+function computeResult(a, b, c) {
+  const op = currentOp;
+  const U = getUniversal(a, b, c);
+  let res, label, formula;
+  if (!threeSet) {
+    switch(op) {
+      case 'union':       res=union(a,b);   label='A ∪ B';  formula=`All elements in A or B`; break;
+      case 'intersection':res=intersect(a,b);label='A ∩ B'; formula=`Elements in both A and B`; break;
+      case 'diff_ab':     res=diff(a,b);    label='A \\ B'; formula=`Elements in A but not in B`; break;
+      case 'diff_ba':     res=diff(b,a);    label='B \\ A'; formula=`Elements in B but not in A`; break;
+      case 'sym_diff':    res=symDiff(a,b); label='A △ B';  formula=`(A \\ B) ∪ (B \\ A)`; break;
+      case 'complement':  res=diff(U,a);    label="A'";     formula=`Universal set minus A`; break;
+    }
+  } else {
+    switch(op) {
+      case 'union':       res=union(union(a,b),c); label='A ∪ B ∪ C'; formula='All elements in A, B or C'; break;
+      case 'intersection':res=intersect(intersect(a,b),c); label='A ∩ B ∩ C'; formula='Elements in A, B and C'; break;
+      case 'diff_ab':     res=diff(a, union(b,c)); label='A \\ (B ∪ C)'; formula='In A only'; break;
+      case 'diff_ba':     res=diff(union(b,c),a); label='(B ∪ C) \\ A'; formula='In B or C but not A'; break;
+      case 'sym_diff':    res=symDiff(symDiff(a,b),c); label='A △ B △ C'; formula='Symmetric difference'; break;
+      case 'complement':  res=diff(U,a); label="A'"; formula='Universal set minus A'; break;
+    }
+  }
+  return { res, label, formula };
+}
+
+function render() {
+  const a = parseSet('setA'), b = parseSet('setB'), c = threeSet ? parseSet('setC') : [];
+  const { res, label, formula } = computeResult(a, b, c);
+
+  // Update stats
+  document.getElementById('statA').textContent = a.length;
+  document.getElementById('statB').textContent = b.length;
+  document.getElementById('statR').textContent = res.length;
+
+  // Update result box
+  document.getElementById('resultLabel').textContent = label;
+  document.getElementById('resultFormula').textContent = formula;
+
+  const membersEl = document.getElementById('resultMembers');
+  membersEl.innerHTML = '';
+  if (res.length === 0) {
+    membersEl.innerHTML = '<span style="color:var(--muted);font-size:0.75rem">∅ (empty set)</span>';
+  } else {
+    const show = res.slice(0, 20);
+    show.forEach(m => {
+      const tag = document.createElement('div');
+      tag.className = 'member-tag';
+      tag.textContent = m;
+      membersEl.appendChild(tag);
+    });
+    if (res.length > 20) {
+      const more = document.createElement('div');
+      more.className = 'member-tag';
+      more.style.background = 'rgba(255,255,255,0.05)';
+      more.style.color = 'var(--muted)';
+      more.textContent = `+${res.length-20} more`;
+      membersEl.appendChild(more);
+    }
+  }
+
+  // Update chip labels
+  document.getElementById('chipA').textContent = `Set A (${a.length})`;
+  document.getElementById('chipB').textContent = `Set B (${b.length})`;
+  document.getElementById('chipC').textContent = `Set C (${c.length})`;
+
+  drawVenn(a, b, c, res);
+}
+
+function drawVenn(a, b, c, highlighted) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.28;
+
+  if (!threeSet) {
+    const ax = cx - R * 0.38, bx = cx + R * 0.38;
+    const ay = cy, by = cy;
+
+    // Background glow
+    const glowA = ctx.createRadialGradient(ax, ay, R*0.1, ax, ay, R*1.2);
+    glowA.addColorStop(0, 'rgba(110,231,247,0.06)');
+    glowA.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowA;
+    ctx.beginPath(); ctx.arc(ax, ay, R*1.2, 0, Math.PI*2); ctx.fill();
+
+    const glowB = ctx.createRadialGradient(bx, by, R*0.1, bx, by, R*1.2);
+    glowB.addColorStop(0, 'rgba(247,110,178,0.06)');
+    glowB.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowB;
+    ctx.beginPath(); ctx.arc(bx, by, R*1.2, 0, Math.PI*2); ctx.fill();
+
+    // Determine highlight fills
+    const highlightedSet = new Set(highlighted);
+    const onlyA = a.filter(x => !b.includes(x));
+    const onlyB = b.filter(x => !a.includes(x));
+    const both = intersect(a, b);
+    const onlyAHighlight = onlyA.every(x => highlightedSet.has(x)) && onlyA.length > 0;
+    const onlyBHighlight = onlyB.every(x => highlightedSet.has(x)) && onlyB.length > 0;
+    const bothHighlight = both.every(x => highlightedSet.has(x)) && both.length > 0;
+
+    // Draw A circle
+    ctx.save();
+    ctx.globalAlpha = onlyAHighlight ? 0.22 : 0.06;
+    ctx.fillStyle = '#6ee7f7';
+    ctx.beginPath(); ctx.arc(ax, ay, R, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = onlyAHighlight ? '#6ee7f7' : '#2a4050';
+    ctx.lineWidth = onlyAHighlight ? 2 : 1.5;
+    if (onlyAHighlight) ctx.shadowBlur = 20, ctx.shadowColor = '#6ee7f7';
+    ctx.beginPath(); ctx.arc(ax, ay, R, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // Draw B circle
+    ctx.save();
+    ctx.globalAlpha = onlyBHighlight ? 0.22 : 0.06;
+    ctx.fillStyle = '#f76eb2';
+    ctx.beginPath(); ctx.arc(bx, by, R, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = onlyBHighlight ? '#f76eb2' : '#50203a';
+    ctx.lineWidth = onlyBHighlight ? 2 : 1.5;
+    if (onlyBHighlight) ctx.shadowBlur = 20, ctx.shadowColor = '#f76eb2';
+    ctx.beginPath(); ctx.arc(bx, by, R, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // Intersection highlight
+    if (bothHighlight) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(200,200,255,0.18)';
+      ctx.shadowBlur = 24;
+      ctx.shadowColor = 'rgba(200,200,255,0.5)';
+      // clip to both circles
+      ctx.beginPath();
+      ctx.arc(ax, ay, R, 0, Math.PI*2);
+      ctx.clip();
+      ctx.beginPath();
+      ctx.arc(bx, by, R, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Labels
+    ctx.font = 'bold 18px Fraunces, serif';
+    ctx.fillStyle = '#6ee7f7';
+    ctx.globalAlpha = 0.9;
+    ctx.textAlign = 'center';
+    ctx.fillText('A', ax - R * 0.55, ay - R * 0.6);
+
+    ctx.fillStyle = '#f76eb2';
+    ctx.fillText('B', bx + R * 0.55, by - R * 0.6);
+    ctx.globalAlpha = 1;
+
+    // Draw elements
+    drawElements2Set(a, b, ax, ay, bx, by, R, highlightedSet);
+
+  } else {
+    // Three-set Venn
+    const offset = R * 0.42;
+    const ax = cx, ay = cy - offset * 0.9;
+    const bx = cx - offset * 0.9, by = cy + offset * 0.55;
+    const ccx = cx + offset * 0.9, ccy = cy + offset * 0.55;
+
+    // Glows
+    [
+      [ax, ay, '#6ee7f7'], [bx, by, '#f76eb2'], [ccx, ccy, '#a8f76e']
+    ].forEach(([x, y, clr]) => {
+      const g = ctx.createRadialGradient(x, y, R*0.1, x, y, R*1.1);
+      g.addColorStop(0, clr + '10');
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, R*1.1, 0, Math.PI*2); ctx.fill();
+    });
+
+    const colors3 = ['rgba(110,231,247,0.08)', 'rgba(247,110,178,0.08)', 'rgba(168,247,110,0.08)'];
+    const strokes3 = ['#6ee7f7', '#f76eb2', '#a8f76e'];
+    [[ax,ay],[bx,by],[ccx,ccy]].forEach(([x,y],i) => {
+      ctx.save();
+      ctx.fillStyle = colors3[i]; ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = strokes3[i]; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    });
+
+    // Labels
+    const labelStyle = [['#6ee7f7','A', ax, ay-R-14], ['#f76eb2','B', bx-R-14, by+10], ['#a8f76e','C', ccx+R+14, ccy+10]];
+    labelStyle.forEach(([clr,lbl,lx,ly]) => {
+      ctx.font = 'bold 18px Fraunces, serif';
+      ctx.fillStyle = clr; ctx.globalAlpha = 0.9; ctx.textAlign='center';
+      ctx.fillText(lbl, lx, ly);
+    });
+    ctx.globalAlpha = 1;
+
+    // Elements
+    drawElements3Set(a, b, c, ax, ay, bx, by, ccx, ccy, R, new Set(highlighted));
+  }
+}
+
+function drawElements2Set(a, b, ax, ay, bx, by, R, highlighted) {
+  const onlyA = a.filter(x => !b.includes(x));
+  const onlyB = b.filter(x => !a.includes(x));
+  const both = intersect(a, b);
+
+  const fontSize = Math.max(9, Math.min(13, R / Math.max(onlyA.length, onlyB.length, both.length, 1) * 0.8));
+  ctx.font = `${fontSize}px DM Mono, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  function placeItems(items, x, y, maxWidth, maxHeight) {
+    const cols = Math.ceil(Math.sqrt(items.length));
+    const rows = Math.ceil(items.length / cols);
+    const spacingX = Math.min(maxWidth / (cols + 1), 42);
+    const spacingY = Math.min(maxHeight / (rows + 1), 18);
+    items.forEach((item, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const px = x + (col - (cols-1)/2) * spacingX;
+      const py = y + (row - (rows-1)/2) * spacingY;
+      const isH = highlighted.has(item);
+      ctx.globalAlpha = isH ? 1 : 0.28;
+      ctx.fillStyle = isH ? '#ffffff' : '#8888aa';
+      if (isH) { ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(255,255,255,0.6)'; }
+      ctx.fillText(item, px, py);
+      ctx.shadowBlur = 0;
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  const d = Math.abs(bx - ax);
+  placeItems(onlyA, ax - d * 0.28, ay, R * 0.8, R * 1.2);
+  placeItems(onlyB, bx + d * 0.28, ay, R * 0.8, R * 1.2);
+  placeItems(both, (ax + bx) / 2, ay, R * 0.55, R * 1.2);
+}
+
+function drawElements3Set(a, b, c, ax, ay, bx, by, cx2, cy2, R, highlighted) {
+  function placeBlock(items, x, y) {
+    const cols = Math.ceil(Math.sqrt(items.length));
+    const spacingX = 28, spacingY = 16;
+    ctx.font = `10px DM Mono, monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    items.forEach((item, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const px = x + (col - (cols-1)/2) * spacingX;
+      const py = y + (row - Math.floor(items.length / cols / 2)) * spacingY;
+      const isH = highlighted.has(item);
+      ctx.globalAlpha = isH ? 1 : 0.2;
+      ctx.fillStyle = isH ? '#fff' : '#8888aa';
+      if (isH) { ctx.shadowBlur = 6; ctx.shadowColor = 'rgba(255,255,255,0.5)'; }
+      ctx.fillText(item, px, py);
+      ctx.shadowBlur = 0;
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  const onlyA = a.filter(x => !b.includes(x) && !c.includes(x));
+  const onlyB = b.filter(x => !a.includes(x) && !c.includes(x));
+  const onlyC = c.filter(x => !a.includes(x) && !b.includes(x));
+  const ab = a.filter(x => b.includes(x) && !c.includes(x));
+  const ac = a.filter(x => c.includes(x) && !b.includes(x));
+  const bc = b.filter(x => c.includes(x) && !a.includes(x));
+  const abc = a.filter(x => b.includes(x) && c.includes(x));
+
+  const midAB = [(ax+bx)/2, (ay+by)/2];
+  const midAC = [(ax+cx2)/2, (ay+cy2)/2];
+  const midBC = [(bx+cx2)/2, (by+cy2)/2];
+  const ctr = [(ax+bx+cx2)/3, (ay+by+cy2)/3];
+
+  placeBlock(onlyA, ax, ay - R*0.42);
+  placeBlock(onlyB, bx - R*0.32, by + R*0.22);
+  placeBlock(onlyC, cx2 + R*0.32, by + R*0.22);
+  placeBlock(ab, midAB[0], midAB[1] + 12);
+  placeBlock(ac, midAC[0], midAC[1] + 12);
+  placeBlock(bc, midBC[0], midBC[1]);
+  placeBlock(abc, ctr[0], ctr[1]);
+}
+
+function resizeCanvas() {
+  const area = document.getElementById('canvasArea');
+  canvas.width = area.clientWidth;
+  canvas.height = area.clientHeight - 60;
+  render();
+}
+
+function setOp(op, btn) {
+  currentOp = op;
+  document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+document.getElementById('threeSetToggle').addEventListener('change', function() {
+  threeSet = this.checked;
+  document.getElementById('setCBlock').style.display = threeSet ? 'flex' : 'none';
+  document.getElementById('setCBlock').style.flexDirection = 'column';
+  document.getElementById('setCBlock').style.gap = '0.5rem';
+  document.getElementById('chipCWrap').style.display = threeSet ? 'flex' : 'none';
+
+  // Show/hide 3-set ops
+  document.querySelectorAll('.op-btn').forEach(b => {
+    b.style.display = 'flex';
+  });
+  render();
+});
+
+['setA','setB','setC'].forEach(id => {
+  document.getElementById(id).addEventListener('input', render);
+});
+
+// Mouse hover
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const tooltip = document.getElementById('tooltip');
+  tooltip.style.left = (mx + 12) + 'px';
+  tooltip.style.top = (my - 30) + 'px';
+});
+
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('load', () => { setTimeout(resizeCanvas, 50); });
+</script>
+</body>
+</html>
